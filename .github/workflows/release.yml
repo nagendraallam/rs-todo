@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   # ── 1. Check if this version has been released already ──────────────────────
