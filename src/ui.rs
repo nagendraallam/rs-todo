@@ -30,6 +30,7 @@ enum Screen {
     List,
     Detail,
     Edit,
+    Add,
 }
 
 struct State<'a> {
@@ -111,6 +112,7 @@ fn event_loop(out: &mut impl Write, s: &mut State) -> io::Result<()> {
                     Screen::List   => { if key_list(s, k.code) { break; } }
                     Screen::Detail => key_detail(s, k.code),
                     Screen::Edit   => key_edit(s, k.code, k.modifiers),
+                    Screen::Add    => key_add(s, k.code, k.modifiers),
                 }
             }
             _ => {}
@@ -168,6 +170,12 @@ fn key_list(s: &mut State, code: KeyCode) -> bool {
         KeyCode::Tab => {
             s.show_done = !s.show_done;
             s.selected = 0;
+        }
+
+        KeyCode::Char('n') => {
+            s.edit_buf = String::new();
+            s.edit_cur = 0;
+            s.screen = Screen::Add;
         }
 
         _ => {}
@@ -242,6 +250,58 @@ fn key_edit(s: &mut State, code: KeyCode, mods: KeyModifiers) {
     }
 }
 
+fn key_add(s: &mut State, code: KeyCode, mods: KeyModifiers) {
+    let plain = !mods.contains(KeyModifiers::CONTROL) && !mods.contains(KeyModifiers::ALT);
+    match code {
+        KeyCode::Esc => {
+            s.screen = Screen::List;
+        }
+        KeyCode::Enter => {
+            let title = s.edit_buf.trim().to_string();
+            if !title.is_empty() {
+                s.list.add(title);
+                storage::save(s.list).ok();
+                // select the newly added item
+                let ids = s.list.items.iter().map(|t| t.id).collect::<Vec<_>>();
+                if let Some(&new_id) = ids.last() {
+                    s.cur_id = new_id;
+                    // find its visible index
+                    let visible = s.list.items.iter()
+                        .filter(|t| if s.show_done { t.done } else { true })
+                        .map(|t| t.id)
+                        .collect::<Vec<_>>();
+                    s.selected = visible.iter().position(|&id| id == new_id).unwrap_or(0);
+                }
+            }
+            s.screen = Screen::List;
+        }
+        KeyCode::Char(c) if plain => {
+            let bp = byte_pos(&s.edit_buf, s.edit_cur);
+            s.edit_buf.insert(bp, c);
+            s.edit_cur += 1;
+        }
+        KeyCode::Backspace if s.edit_cur > 0 => {
+            let bp = byte_pos(&s.edit_buf, s.edit_cur - 1);
+            s.edit_buf.remove(bp);
+            s.edit_cur -= 1;
+        }
+        KeyCode::Delete => {
+            let len = s.edit_buf.chars().count();
+            if s.edit_cur < len {
+                let bp = byte_pos(&s.edit_buf, s.edit_cur);
+                s.edit_buf.remove(bp);
+            }
+        }
+        KeyCode::Left if s.edit_cur > 0 => { s.edit_cur -= 1; }
+        KeyCode::Right => {
+            if s.edit_cur < s.edit_buf.chars().count() { s.edit_cur += 1; }
+        }
+        KeyCode::Home => { s.edit_cur = 0; }
+        KeyCode::End  => { s.edit_cur = s.edit_buf.chars().count(); }
+        _ => {}
+    }
+}
+
 fn byte_pos(s: &str, char_idx: usize) -> usize {
     s.char_indices()
         .nth(char_idx)
@@ -269,6 +329,7 @@ fn draw(out: &mut impl Write, s: &State, cols: u16, rows: u16) -> io::Result<()>
         Screen::List   => draw_list(out, s, cols, rows)?,
         Screen::Detail => draw_detail(out, s, cols, rows)?,
         Screen::Edit   => draw_edit(out, s, cols, rows)?,
+        Screen::Add    => draw_add(out, s, cols, rows)?,
     }
     out.flush()
 }
@@ -347,7 +408,7 @@ fn draw_list(out: &mut impl Write, s: &State, cols: u16, rows: u16) -> io::Resul
         ("Tasks", "Tab → Done")
     };
     top_bar(out, title, hint, cols)?;
-    bot_bar(out, "↑↓/jk: move  Enter/1-9: open  d: done  x: delete  Tab: switch  q: quit", cols, rows)?;
+    bot_bar(out, "↑↓/jk: move  Enter/1-9: open  n: new  d: done  x: delete  Tab: switch  q: quit", cols, rows)?;
 
     let c_start = 3u16;
     let c_end   = rows - 3;
@@ -368,7 +429,7 @@ fn draw_list(out: &mut impl Write, s: &State, cols: u16, rows: u16) -> io::Resul
         let msg = if s.show_done {
             "No completed tasks yet."
         } else {
-            "No tasks — add one: todo <task title>"
+            "No tasks — press n to add one, or run: todo <title>"
         };
         queue!(out, Print(msg), ResetColor)?;
     }
@@ -518,6 +579,50 @@ fn draw_edit(out: &mut impl Write, s: &State, cols: u16, rows: u16) -> io::Resul
     queue!(out, cursor::MoveTo(2, box_row), SetForegroundColor(C_DIM), Print("│ "), ResetColor)?;
 
     // Scrollable text with virtual viewport
+    let chars: Vec<char> = s.edit_buf.chars().collect();
+    let len   = chars.len();
+    let start = if s.edit_cur >= box_w { s.edit_cur + 1 - box_w } else { 0 };
+    let end   = (start + box_w).min(len);
+    let vis: String = chars[start..end].iter().collect();
+    let vis_cur = s.edit_cur - start;
+
+    queue!(out, SetForegroundColor(C_BODY), Print(&vis))?;
+    queue!(out, Print(" ".repeat(box_w.saturating_sub(vis.len()))))?;
+    queue!(out, SetForegroundColor(C_DIM), Print(" │"), ResetColor)?;
+
+    queue!(out, cursor::MoveTo(2, box_row + 1), SetForegroundColor(C_DIM))?;
+    queue!(out, Print("└"), Print("─".repeat(box_w + 2)), Print("┘"), ResetColor)?;
+
+    // Show the text cursor inside the box
+    queue!(out, cursor::MoveTo(4 + vis_cur as u16, box_row), cursor::Show)?;
+
+    Ok(())
+}
+
+// ── Add screen ────────────────────────────────────────────────────────────────
+
+fn draw_add(out: &mut impl Write, s: &State, cols: u16, rows: u16) -> io::Result<()> {
+    top_bar(out, "New Task", "", cols)?;
+    bot_bar(out, "Enter: add task  Esc: cancel  ←→: cursor  Backspace: delete", cols, rows)?;
+
+    let c_start = 3u16;
+    let c_end   = rows - 3;
+    let w       = cols as usize;
+    side_borders(out, c_start, c_end, cols)?;
+
+    // Prompt
+    queue!(out, cursor::MoveTo(2, c_start + 2), SetForegroundColor(C_DIM))?;
+    queue!(out, Print("Task title (Enter to add, Esc to cancel):"), ResetColor)?;
+
+    // Input box
+    let box_w   = (w as isize - 8).max(4) as usize;
+    let box_row = c_start + 4;
+
+    queue!(out, cursor::MoveTo(2, box_row - 1), SetForegroundColor(C_DIM))?;
+    queue!(out, Print("┌"), Print("─".repeat(box_w + 2)), Print("┐"), ResetColor)?;
+
+    queue!(out, cursor::MoveTo(2, box_row), SetForegroundColor(C_DIM), Print("│ "), ResetColor)?;
+
     let chars: Vec<char> = s.edit_buf.chars().collect();
     let len   = chars.len();
     let start = if s.edit_cur >= box_w { s.edit_cur + 1 - box_w } else { 0 };
