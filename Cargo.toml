@@ -1,7 +1,13 @@
 [package]
-name = "todo"
-version = "0.1.0"
-edition = "2021"
+name        = "rs-todo"
+version     = "0.1.0"
+edition     = "2021"
+description = "A lightweight, encrypted terminal todo app with a TUI viewer"
+license     = "MIT"
+repository  = "https://github.com/nagendraallam/rs-todo"
+keywords    = ["todo", "cli", "tui", "terminal", "productivity"]
+categories  = ["command-line-utilities"]
+exclude     = [".github", ".gitignore"]
 
 [[bin]]
 name = "todo"
