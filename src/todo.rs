@@ -2,21 +2,32 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Todo {
-    pub id:          u32,
-    pub title:       String,
+    pub id: u32,
+    pub title: String,
     pub description: String,
-    pub done:        bool,
+    pub done: bool,
+    #[serde(default)]
+    pub ticktick_task_id: Option<String>,
+    #[serde(default)]
+    pub ticktick_project_id: Option<String>,
 }
 
 impl Todo {
     pub fn new(id: u32, title: String) -> Self {
-        Self { id, title, description: String::new(), done: false }
+        Self {
+            id,
+            title,
+            description: String::new(),
+            done: false,
+            ticktick_task_id: None,
+            ticktick_project_id: None,
+        }
     }
 }
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct TodoList {
-    pub items:   Vec<Todo>,
+    pub items: Vec<Todo>,
     pub next_id: u32,
 }
 

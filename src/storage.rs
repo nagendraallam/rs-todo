@@ -1,6 +1,6 @@
 use std::{fs, io, path::PathBuf};
 
-use crate::todo::TodoList;
+use crate::{app_state::AppState, todo::TodoList};
 
 // XOR key — keeps the file non-human-readable without heavy crypto deps.
 // 32 bytes exactly.
@@ -12,19 +12,28 @@ fn data_path() -> PathBuf {
         .join(".todo_store")
 }
 
-pub fn load() -> TodoList {
+pub fn load() -> AppState {
     let path = data_path();
     if !path.exists() {
-        return TodoList::default();
+        return AppState::default();
     }
     let enc = fs::read(&path).unwrap_or_default();
     let raw = xor(&enc);
-    serde_json::from_slice(&raw).unwrap_or_default()
+    if let Ok(state) = serde_json::from_slice::<AppState>(&raw) {
+        return state;
+    }
+    // Backward compatibility for old versions that only stored TodoList.
+    if let Ok(list) = serde_json::from_slice::<TodoList>(&raw) {
+        return AppState {
+            list,
+            ..AppState::default()
+        };
+    }
+    AppState::default()
 }
 
-pub fn save(list: &TodoList) -> io::Result<()> {
-    let raw = serde_json::to_vec(list)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+pub fn save(state: &AppState) -> io::Result<()> {
+    let raw = serde_json::to_vec(state).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
     fs::write(data_path(), xor(&raw))
 }
 
