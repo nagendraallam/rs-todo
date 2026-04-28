@@ -4,7 +4,7 @@
 
 ![Terminal Todo TUI](./image.png)
 
-If you spend an abnormal amount of time in the terminal and do not want to switch between apps to add tasks, you found the right shit.
+If you spend most of your day in the terminal and do not want to switch between apps just to manage tasks, this tool is for you.
 
 ---
 
