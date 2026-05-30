@@ -1,72 +1,118 @@
 # Terminal Todo
 
-**A terminal TODO Application built on (T)RUST**
+> A fast, offline-first terminal TODO app with a TUI — built in Rust. Optional TickTick cloud sync.
+
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/built%20with-Rust-orange.svg)](https://www.rust-lang.org)
+[![Release](https://img.shields.io/github/v/release/nagendraallam/rs-todo)](https://github.com/nagendraallam/rs-todo/releases)
+[![Crates.io](https://img.shields.io/crates/v/rs-todo.svg)](https://crates.io/crates/rs-todo)
 
 ![Terminal Todo TUI](./image.png)
 
-If you spend most of your day in the terminal and do not want to switch between apps just to manage tasks, this tool is for you.
+---
+
+If you live in the terminal and don't want to context-switch into another app just to track tasks, this tool is for you. Add tasks in one command, browse and edit them in a clean TUI, and optionally sync everything to TickTick cloud.
 
 ---
 
-## Installation
+## Features
 
-Make sure Rust is installed first:
+- **Instant task entry** — `todo Buy groceries` from anywhere in your shell
+- **Full TUI** — navigate, read, edit, complete, and delete tasks without leaving the terminal
+- **Offline-first** — all data lives locally; no account required
+- **TickTick cloud sync** — connect once and your tasks sync across devices
+- **Project switching** — switch between TickTick projects from inside the TUI
+- **Clean rendering** — handles unicode/emoji widths for crisp TUI borders on any font
+
+---
+
+## Install
+
+### From source (requires Rust)
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo install --git https://github.com/nagendraallam/rs-todo
 ```
 
-Clone and install:
+Or clone and install locally:
 
 ```bash
-git clone <your-repo-url>
-cd learn-rust
+git clone https://github.com/nagendraallam/rs-todo
+cd rs-todo
 cargo install --path .
 ```
 
-The `todo` binary will be available in `~/.cargo/bin` (usually already in your PATH).
+The `todo` binary lands in `~/.cargo/bin` — add it to your `PATH` if it isn't already.
+
+> Don't have Rust? Install it first:
+> ```bash
+> curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+> ```
 
 ---
 
-## How To Use
-
-Quickly add a task from anywhere:
+## Usage
 
 ```bash
+# Add a task instantly
 todo Buy groceries
-todo Review logs from production
-```
+todo "Review production logs"
 
-Open the TUI:
-
-```bash
+# Open the TUI
 todo
+
+# TickTick cloud sync
+todo ticktick connect          # OAuth connect (one-time)
+todo ticktick projects         # list your TickTick projects
+todo ticktick use <project>    # set default project
+todo ticktick sync             # push queued changes + pull latest
+todo sync                      # alias
+todo refresh                   # alias
 ```
 
-Inside the TUI you can:
-- browse tasks
-- open and read task details
-- add/edit descriptions
-- mark tasks done/undone
-- delete tasks
-- refresh/switch projects when TickTick is connected
-
-Press `h` in the TUI to toggle and view all key commands.
+Inside the TUI, press `h` to toggle the full key-binding reference.
 
 ---
 
-## Keep It Always Open (tmux)
+## TUI Key Bindings
 
-If you use `tmux`, keep a dedicated pane/session running `todo` all the time so your task list is always one keybind away.
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` or `j` / `k` | Navigate tasks |
+| `Enter` | Open task detail |
+| `a` | Add new task |
+| `e` | Edit selected task |
+| `d` | Toggle done/undone |
+| `x` | Delete task |
+| `p` | Switch project |
+| `r` | Refresh / sync |
+| `q` | Quit |
+| `h` | Toggle help |
 
 ---
 
 ## TickTick Cloud Sync
 
-Want cloud sync so tasks are available anywhere? Connect once:
+Connect once:
 
 ```bash
 todo ticktick connect
 ```
 
-After connecting, your tasks sync with TickTick cloud, and you can continue working from terminal while still seeing tasks across devices/apps.
+After that, tasks are synced to TickTick and visible across all your devices and apps. Local changes made offline are queued and pushed on the next sync.
+
+---
+
+## Tip: Keep it always open in tmux
+
+If you use `tmux`, dedicate a pane or session to `todo` so your task list is always one keybind away.
+
+```bash
+tmux new-session -d -s todo -c ~ 'todo'
+```
+
+---
+
+## License
+
+[MIT](LICENSE)
